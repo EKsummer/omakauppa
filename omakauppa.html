@@ -113,7 +113,7 @@
     let quantityInput = document.getElementById('quantity');
     let scanningActive = false;
     let isCameraActive = false;
-    let currentStream = null; // Muuttuja kameran streamin säilyttämiseen
+    let currentStream = null;
 
     const zapierUrl = 'https://hooks.zapier.com/hooks/catch/21723854/2w9piin/';
 
@@ -126,7 +126,7 @@
         barcodeText.textContent = 'Lue tuotteen viivakoodi';
 
         // Pyydetään kameran käyttöoikeus ja avataan kamera
-        navigator.mediaDevices.getUserMedia({ video: true })
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }) // Käytetään takakameraa ensisijaisesti
           .then((stream) => {
             camera.srcObject = stream;
             currentStream = stream; // Säilytetään kameran stream
