@@ -144,6 +144,7 @@
     <p id="barcode">Aloita klikkaamalla Skannaa koodi</p>
 
     <button id="scanButton" onclick="startScanner()">Skannaa koodi</button> <!-- Skannaa koodi painike -->
+    <button id="switchCameraButton" onclick="switchCamera()">Vaihda kameraa</button> <!-- Vaihda kameraa painike -->
 
     <!-- Pop-up viivakoodin lukemisen jälkeen -->
     <div id="popup">
@@ -165,10 +166,11 @@
     let quantityInput = document.getElementById('quantity');
     let scanningActive = false;
     let isCameraActive = false;
+    let currentStream = null; // Muuttuja kameran streamin säilyttämiseen
 
     const zapierUrl = 'https://hooks.zapier.com/hooks/catch/21723854/2w9piin/'; // Zapier Webhook URL
 
-    // Funktio, joka etsii takakameran ja avaa sen
+    // Funktio, joka avaa kameran vain kerran
     function startScanner() {
       if (!scanningActive && !isCameraActive) {  // Tarkistetaan, että kamera ei ole jo auki
         scanningActive = true;
@@ -176,17 +178,16 @@
         document.getElementById("scanButton").style.display = "none";  // Piilotetaan painike
         barcodeText.textContent = 'Lue tuotteen viivakoodi';  // Muutetaan teksti
 
-        // Etsitään takakamera
+        // Etsitään käytettävissä olevat videolaitteet ja käytetään ensimmäistä
         navigator.mediaDevices.enumerateDevices()
           .then(devices => {
             const videoDevices = devices.filter(device => device.kind === 'videoinput');  // Haetaan videolaitteet
-            const backCamera = videoDevices.find(device => device.label.toLowerCase().includes('back'));  // Etsitään takakamera
-
-            if (backCamera) {
-              // Käytetään takakameraa, jos se löytyy
-              navigator.mediaDevices.getUserMedia({ video: { deviceId: backCamera.deviceId } })
+            if (videoDevices.length > 0) {
+              // Käytetään ensimmäistä löytyvää videolaitetta
+              navigator.mediaDevices.getUserMedia({ video: { deviceId: videoDevices[0].deviceId } })
                 .then((stream) => {
-                  camera.srcObject = stream;  // Liitetään takakamera virtuaalilaitteelle
+                  camera.srcObject = stream;  // Liitetään kamera virtuaalilaitteelle
+                  currentStream = stream; // Säilytetään kameran stream
                   codeReader.decodeFromVideoDevice(null, camera, (result, error) => {
                     if (result) {
                       barcodeText.textContent = 'Luettu viivakoodi: ' + result.text;
@@ -206,65 +207,4 @@
                   console.error(err);
                   alert("Virhe kameran käytössä. Tarkista asetukset.");
                 });
-            } else {
-              alert("Takakameraa ei löytynyt.");
             }
-          })
-          .catch((err) => {
-            console.error(err);
-            alert("Virhe kameran etsimisessä.");
-          });
-      }
-    }
-
-    function saveToSheet(barcode) {
-      let quantity = quantityInput.value;
-      if (!quantity) {
-        quantity = 1;
-      } else if (!Number.isInteger(Number(quantity)) || Number(quantity) < -9 || Number(quantity) > 9) {
-        alert("Syötä määrä kokonaislukuna -9 ja 9 välillä!");
-        return;
-      }
-
-      const now = new Date();
-      const timestamp = now.toISOString();
-
-      const data = {
-        kellonaika: timestamp,
-        viivakoodi: barcode,
-        maara: quantity
-      };
-
-      fetch(zapierUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
-      .then(response => response.json())
-      .then(data => {
-        console.log('Data lähetetty Zapierille:', data);
-      })
-      .catch((error) => {
-        console.error('Virhe lähetyksessä Zapierille:', error);
-      });
-    }
-
-    function continueScanning() {
-      popup.style.display = 'none';
-      scanningActive = true;
-      startScanner();  // Käynnistetään kamera uudelleen
-    }
-
-    function stopScanning() {
-      popup.style.display = 'none';
-      scanningActive = false;
-      barcodeText.textContent = 'Aloita klikkaamalla Skannaa koodi';  // Teksti alkuun
-      camera.srcObject = null;  // Poistetaan kameran syöte
-      document.getElementById("scanButton").style.display = "inline-block";  // Näytetään painike uudelleen
-      isCameraActive = false; // Kamera ei ole enää aktiivinen
-    }
-  </script>
-</body>
-</html>
