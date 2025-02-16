@@ -92,7 +92,7 @@
       top: 25%;
       left: 50%;
       transform: translateX(-50%);
-      background-color: #ffffff;
+      background-color: #e0e0e0; /* Tummempi harmaa tausta */
       padding: 30px;
       border-radius: 10px;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -112,11 +112,11 @@
       margin-bottom: 20px;
     }
 
-    /* Määräkenttä */
+    /* Määräkenttä (50% pienempi) */
     input[type="number"] {
       padding: 10px;
       font-size: 1.5rem;
-      width: 50%;
+      width: 25%; /* Pienennetään kenttää */
       margin-bottom: 20px;
       border-radius: 8px;
       border: 2px solid #f57c00;
@@ -128,6 +128,7 @@
       max-width: 800px;
       padding: 20px;
     }
+
   </style>
 </head>
 <body>
@@ -162,31 +163,29 @@
     let popup = document.getElementById('popup');
     let scannedCode = document.getElementById('scannedCode');
     let quantityInput = document.getElementById('quantity');
-    let scanningActive = false; // Muuttuja, joka seuraa onko skannaus aktiivinen
+    let scanningActive = false;
+    let isCameraActive = false; // Lisätään tämä muuttuja seuraamaan kameran tilaa
 
     const zapierUrl = 'https://hooks.zapier.com/hooks/catch/21723854/2w9piin/'; // Zapier Webhook URL
 
+    // Funktio, joka avaa kameran vain kerran
     function startScanner() {
-      if (!scanningActive) {
+      if (!scanningActive && !isCameraActive) {  // Tarkistetaan, että kamera ei ole jo auki
         scanningActive = true;
-        // Piilotetaan "Skannaa koodi" painike ja näytetään uusi teksti
+        isCameraActive = true; // Asetetaan kamera aktiiviseksi
         document.getElementById("scanButton").style.display = "none";  // Piilotetaan painike
         barcodeText.textContent = 'Lue tuotteen viivakoodi';  // Muutetaan teksti
 
-        codeReader.getVideoInputDevices()
-          .then((videoInputDevices) => {
-            const selectedDeviceId = videoInputDevices[0].deviceId;  // Valitaan ensimmäinen kamera
-            codeReader.decodeFromVideoDevice(selectedDeviceId, camera, (result, error) => {
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then((stream) => {
+            camera.srcObject = stream; // Liitetään kamera virtuaalilaitteelle
+            codeReader.decodeFromVideoDevice(null, camera, (result, error) => {
               if (result) {
                 barcodeText.textContent = 'Luettu viivakoodi: ' + result.text;
                 scannedCode.textContent = result.text;
-                
-                // Soitetaan "tada" ääni
                 let audio = new Audio('https://www.soundjay.com/button/tada-01.wav');
                 audio.play();
-
-                // Näytetään pop-up, kun viivakoodi on luettu onnistuneesti
-                popup.style.display = 'block';
+                popup.style.display = 'block';  // Näytetään pop-up
 
                 saveToSheet(result.text);  // Tallenna viivakoodi Zapierille
               }
@@ -239,15 +238,16 @@
     function continueScanning() {
       popup.style.display = 'none';
       scanningActive = true;
-      startScanner();
+      startScanner();  // Käynnistetään kamera uudelleen
     }
 
     function stopScanning() {
       popup.style.display = 'none';
       scanningActive = false;
-      barcodeText.textContent = 'Aloita klikkaamalla Skannaa koodi';
-      camera.srcObject = null; // Poistetaan kameran syöte
+      barcodeText.textContent = 'Aloita klikkaamalla Skannaa koodi';  // Teksti alkuun
+      camera.srcObject = null;  // Poistetaan kameran syöte
       document.getElementById("scanButton").style.display = "inline-block";  // Näytetään painike uudelleen
+      isCameraActive = false; // Kamera ei ole enää aktiivinen
     }
   </script>
 </body>
