@@ -170,7 +170,7 @@
 
     const zapierUrl = 'https://hooks.zapier.com/hooks/catch/21723854/2w9piin/'; // Zapier Webhook URL
 
-    // Funktio, joka avaa kameran vain kerran
+    // Funktio, joka avaa kameran ja kysyy luvan kameran käyttöön
     function startScanner() {
       if (!scanningActive && !isCameraActive) {  // Tarkistetaan, että kamera ei ole jo auki
         scanningActive = true;
@@ -178,56 +178,31 @@
         document.getElementById("scanButton").style.display = "none";  // Piilotetaan painike
         barcodeText.textContent = 'Lue tuotteen viivakoodi';  // Muutetaan teksti
 
-        // Etsitään käytettävissä olevat videolaitteet ja käytetään ensimmäistä
-        navigator.mediaDevices.enumerateDevices()
-          .then(devices => {
-            const videoDevices = devices.filter(device => device.kind === 'videoinput');  // Haetaan videolaitteet
-            if (videoDevices.length > 0) {
-              // Käytetään ensimmäistä löytyvää videolaitetta
-              navigator.mediaDevices.getUserMedia({ video: { deviceId: videoDevices[0].deviceId } })
-                .then((stream) => {
-                  camera.srcObject = stream;  // Liitetään kamera virtuaalilaitteelle
-                  currentStream = stream; // Säilytetään kameran stream
-                  codeReader.decodeFromVideoDevice(null, camera, (result, error) => {
-                    if (result) {
-                      barcodeText.textContent = 'Luettu viivakoodi: ' + result.text;
-                      scannedCode.textContent = result.text;
-                      let audio = new Audio('https://www.soundjay.com/button/tada-01.wav');
-                      audio.play();
-                      popup.style.display = 'block';  // Näytetään pop-up
+        // Pyydetään kameran käyttöoikeus ja avataan kamera
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then((stream) => {
+            camera.srcObject = stream;  // Liitetään kamera virtuaalilaitteelle
+            currentStream = stream; // Säilytetään kameran stream
+            codeReader.decodeFromVideoDevice(null, camera, (result, error) => {
+              if (result) {
+                barcodeText.textContent = 'Luettu viivakoodi: ' + result.text;
+                scannedCode.textContent = result.text;
+                let audio = new Audio('https://www.soundjay.com/button/tada-01.wav');
+                audio.play();
+                popup.style.display = 'block';  // Näytetään pop-up
 
-                      saveToSheet(result.text);  // Tallenna viivakoodi Zapierille
-                    }
-                    if (error) {
-                      console.error(error);
-                    }
-                  });
-                })
-                .catch((err) => {
-                  console.error(err);
-                  alert("Virhe kameran käytössä. Tarkista asetukset.");
-                });
-            } else {
-              alert("Kameraa ei löytynyt.");
-            }
+                saveToSheet(result.text);  // Tallenna viivakoodi Zapierille
+              }
+              if (error) {
+                console.error(error);
+              }
+            });
           })
           .catch((err) => {
             console.error(err);
-            alert("Virhe kameran etsimisessä.");
+            alert("Virhe kameran käytössä. Tarkista asetukset.");
           });
       }
     }
 
-    function switchCamera() {
-      if (currentStream) {
-        // Lopetetaan nykyinen kamera
-        const tracks = currentStream.getTracks();
-        tracks.forEach(track => track.stop());
-      }
-
-      // Vaihdetaan kameraa
-      navigator.mediaDevices.enumerateDevices()
-        .then(devices => {
-          const videoDevices = devices.filter(device => device.kind === 'videoinput');  // Haetaan videolaitteet
-          if (videoDevices.length > 1) {
-            //
+    function saveToSheet(barcode) {
