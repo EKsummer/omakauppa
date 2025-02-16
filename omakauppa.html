@@ -126,30 +126,52 @@
         barcodeText.textContent = 'Lue tuotteen viivakoodi';
 
         // Pyydetään kameran käyttöoikeus ja avataan kamera
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }) // Käytetään takakameraa ensisijaisesti
-          .then((stream) => {
-            camera.srcObject = stream;
-            currentStream = stream; // Säilytetään kameran stream
-            codeReader.decodeFromVideoDevice(null, camera, (result, error) => {
-              if (result) {
-                barcodeText.textContent = 'Luettu viivakoodi: ' + result.text;
-                scannedCode.textContent = result.text;
-                let audio = new Audio('https://www.soundjay.com/button/tada-01.wav');
-                audio.play();
-                popup.style.display = 'block';
+        navigator.mediaDevices.getUserMedia({ 
+          video: {
+            facingMode: "environment", // Yritetään käyttää takakameraa ensisijaisesti
+            width: { ideal: 1280 },    // Parempi laatu
+            height: { ideal: 720 }     // Parempi laatu
+          }
+        })
+        .then((stream) => {
+          camera.srcObject = stream;
+          currentStream = stream; // Säilytetään kameran stream
+          applyCameraConstraints(stream); // Sovelletaan tarkennusasetuksia
+          codeReader.decodeFromVideoDevice(null, camera, (result, error) => {
+            if (result) {
+              barcodeText.textContent = 'Luettu viivakoodi: ' + result.text;
+              scannedCode.textContent = result.text;
+              let audio = new Audio('https://www.soundjay.com/button/tada-01.wav');
+              audio.play();
+              popup.style.display = 'block';
 
-                saveToSheet(result.text);
-              }
-              if (error) {
-                console.error(error);
-              }
-            });
-          })
-          .catch((err) => {
-            console.error(err);
-            alert("Virhe kameran käytössä. Tarkista asetukset.");
+              saveToSheet(result.text);
+            }
+            if (error) {
+              console.error(error);
+            }
           });
+        })
+        .catch((err) => {
+          console.error(err);
+          alert("Virhe kameran käytössä. Tarkista asetukset.");
+        });
       }
+    }
+
+    // Funktio, joka soveltaa tarkennusasetuksia
+    function applyCameraConstraints(stream) {
+      const track = stream.getVideoTracks()[0];
+      const constraints = {
+        advanced: [{
+          focusMode: 'continuous', // Yritetään asettaa tarkennus automaattiseksi
+        }]
+      };
+      track.applyConstraints(constraints).then(() => {
+        console.log("Tarkennusasetukset sovellettu");
+      }).catch((error) => {
+        console.error("Tarkennus ei toimi tällä laitteella", error);
+      });
     }
 
     function saveToSheet(barcode) {
