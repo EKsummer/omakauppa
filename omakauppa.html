@@ -207,4 +207,27 @@
                   console.error(err);
                   alert("Virhe kameran käytössä. Tarkista asetukset.");
                 });
+            } else {
+              alert("Kameraa ei löytynyt.");
             }
+          })
+          .catch((err) => {
+            console.error(err);
+            alert("Virhe kameran etsimisessä.");
+          });
+      }
+    }
+
+    function switchCamera() {
+      if (currentStream) {
+        // Lopetetaan nykyinen kamera
+        const tracks = currentStream.getTracks();
+        tracks.forEach(track => track.stop());
+      }
+
+      // Vaihdetaan kameraa
+      navigator.mediaDevices.enumerateDevices()
+        .then(devices => {
+          const videoDevices = devices.filter(device => device.kind === 'videoinput');  // Haetaan videolaitteet
+          if (videoDevices.length > 1) {
+            //
